@@ -1,10 +1,12 @@
 {
   "name": "validation-logger",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "dist/index.js",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^10.12.10"
+    "@types/node": "^10.12.10",
+    "source-map-support": "^0.5.9",
+    "typescript": "^3.1.6"
   },
   "dependencies": {
     "moment": "^2.22.2",
@@ -13,5 +15,8 @@
     "ripple-address-codec": "^2.0.1",
     "ripple-binary-codec": "^0.2.0",
     "ws": "^6.1.2"
+  },
+  "scripts": {
+    "start": "tsc && node dist"
   }
 }

@@ -1,5 +1,8 @@
 # .gitignore
 
+# Logs from validation-logger
+logs/
+
 # Ignore vim swap files.
 *.swp
 
