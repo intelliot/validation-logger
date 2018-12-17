@@ -49,3 +49,9 @@ setInterval(async () => {
   validationMessages = ''
   console.log(`Successfully wrote "unl-data.log" and "${filename}"`)
 }, 1000 * 60 * 10 /* every ten minutes */)
+
+export {
+  Network,
+  ValidationMessage,
+  Logger
+}
