@@ -36,7 +36,7 @@ const network = new Network({
   network: 'MAINNET',
   // onUnlData,
   // onValidationReceived,
-  verbose: false
+  verbose: true
 })
 network.onUnlData = onUnlData
 network.onValidationReceived = onValidationReceived

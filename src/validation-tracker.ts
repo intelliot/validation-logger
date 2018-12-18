@@ -8,6 +8,21 @@ import * as dns from 'dns'
 // Load some pre-cached names
 const names = require('../validator-names.json')
 
+const delete_from_dedup_after_seconds = 30
+const dedup_validations_set = new Set()
+let dedup_last_signing_time = 0
+const dedup_clear = () => {
+  dedup_validations_set.forEach((value: string) => {
+    // `value` is more than 30 seconds old, based on signing_time
+    const validationMessage: ValidationMessage = JSON.parse(value)
+    if (validationMessage.signing_time + delete_from_dedup_after_seconds < dedup_last_signing_time) {
+      dedup_validations_set.delete(value)
+    }
+  })
+}
+// Remove old entries from the Set every 30 seconds
+setInterval(dedup_clear, delete_from_dedup_after_seconds * 1000)
+
 // The validations stream sends messages whenever it receives validation messages,
 // also called validation votes, from validators it trusts.
 export interface ValidationMessage {
@@ -186,8 +201,13 @@ class ValidationStream {
 
       if (dataObj.type === 'validationReceived') {
         const validationMessage: ValidationMessage = dataObj
-        validationMessage.timestamp = moment()
-        onValidationReceived(validationMessage)
+        if (!dedup_validations_set.has(JSON.stringify(validationMessage))) {
+          dedup_validations_set.add(JSON.stringify(validationMessage))
+          onValidationReceived(Object.assign({}, validationMessage, {timestamp: moment()}))
+        }
+        if (dedup_last_signing_time < validationMessage.signing_time) {
+          dedup_last_signing_time = validationMessage.signing_time
+        }
       } else if (dataObj.type === 'manifestReceived') {
         const manifestMessage: ManifestMessage = dataObj
         onManifestReceived(manifestMessage)
@@ -355,11 +375,12 @@ export class Network {
   connect() {
     // refresh connections
     // every minute
-    setInterval(this.refreshSubscriptions, 60 * 1000)
+    // setInterval(this.refreshSubscriptions.bind(this), 60 * 1000)
     this.refreshSubscriptions()
   }
 
   async subscribeToRippleds() {
+    console.info('Subscribing to rippleds...')
 
     const onManifestReceived = async ({
       master_key,
@@ -517,6 +538,7 @@ export class Network {
         if (this.verbose) {
           console.info(`[${this.network}] getUNL: Now have ${Object.keys(this.validators).length} validators and ${Object.keys(this.manifestKeys).length} manifestKeys`)
         }
+        return resolve() // IMPORTANT
       }).catch(err => {
         return reject(err)
       })
