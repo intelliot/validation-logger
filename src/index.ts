@@ -35,7 +35,8 @@ function onValidationReceived(validationMessage: ValidationMessage) {
 new Network({
   network: 'MAINNET',
   onUnlData,
-  onValidationReceived
+  onValidationReceived,
+  // verbose: false
 })
 
 const logger = new Logger({logsSubdirectory: 'MAINNET'})

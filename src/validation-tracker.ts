@@ -276,8 +276,7 @@ function remove(array, element) {
   }
 }
 
-export type NetworkType = 'ALTNET'|'MAINNET'
-export type OnUnlDataCallback = (data: {
+export type UnlData = {
   isDuringStartup: boolean
   isNewValidator: boolean
   isNewManifest: boolean
@@ -286,7 +285,9 @@ export type OnUnlDataCallback = (data: {
   signing_key: string
   Sequence: number
   isFromManifestsStream?: boolean
-}) => void
+}
+export type NetworkType = 'ALTNET'|'MAINNET'
+export type OnUnlDataCallback = (data: UnlData) => void
 
 export class Network {
   network: NetworkType
@@ -328,19 +329,24 @@ export class Network {
 
   onUnlData: OnUnlDataCallback
   onValidationReceived: (validationMessage: ValidationMessage) => void
+  verbose: boolean
 
   constructor(options: {
     network: NetworkType
     onUnlData: OnUnlDataCallback
-    onValidationReceived: (validationMessage: ValidationMessage) => void
+    onValidationReceived: (validationMessage: ValidationMessage) => void,
+    verbose?: boolean
   }) {
     this.network = options.network
     this.onUnlData = options.onUnlData
     this.onValidationReceived = options.onValidationReceived
+    this.verbose = options.verbose === undefined ? true : options.verbose
     this.names = names
 
     const refreshSubscriptions = async () => {
-      console.info(`[${this.network}] Refreshing subscriptions...`)
+      if (this.verbose) {
+        console.info(`[${this.network}] Refreshing subscriptions...`)
+      }
       await this.getUNL()
       await this.subscribeToRippleds()
     }
@@ -506,7 +512,9 @@ export class Network {
         for (const validator of validatorsToDelete) {
           delete this.validators[validator]
         }
-        console.info(`[${this.network}] getUNL: Now have ${Object.keys(this.validators).length} validators and ${Object.keys(this.manifestKeys).length} manifestKeys`)
+        if (this.verbose) {
+          console.info(`[${this.network}] getUNL: Now have ${Object.keys(this.validators).length} validators and ${Object.keys(this.manifestKeys).length} manifestKeys`)
+        }
       }).catch(err => {
         return reject(err)
       })
