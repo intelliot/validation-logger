@@ -333,28 +333,30 @@ export class Network {
 
   constructor(options: {
     network: NetworkType
-    onUnlData: OnUnlDataCallback
-    onValidationReceived: (validationMessage: ValidationMessage) => void,
+    // onUnlData: OnUnlDataCallback
+    // onValidationReceived: (validationMessage: ValidationMessage) => void,
     verbose?: boolean
   }) {
     this.network = options.network
-    this.onUnlData = options.onUnlData
-    this.onValidationReceived = options.onValidationReceived
+    this.onUnlData = () => {}
+    this.onValidationReceived = () => {}
     this.verbose = options.verbose === undefined ? true : options.verbose
     this.names = names
+  }
 
-    const refreshSubscriptions = async () => {
-      if (this.verbose) {
-        console.info(`[${this.network}] Refreshing subscriptions...`)
-      }
-      await this.getUNL()
-      await this.subscribeToRippleds()
+  async refreshSubscriptions() {
+    if (this.verbose) {
+      console.info(`[${this.network}] Refreshing subscriptions...`)
     }
-    
+    await this.getUNL()
+    await this.subscribeToRippleds()
+  }
+  
+  connect() {
     // refresh connections
     // every minute
-    setInterval(refreshSubscriptions, 60 * 1000)
-    refreshSubscriptions()
+    setInterval(this.refreshSubscriptions, 60 * 1000)
+    this.refreshSubscriptions()
   }
 
   async subscribeToRippleds() {

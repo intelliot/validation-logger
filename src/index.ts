@@ -32,12 +32,15 @@ function onValidationReceived(validationMessage: ValidationMessage) {
   validationMessages += JSON.stringify(validationMessage) + '\n'
 }
 
-new Network({
+const network = new Network({
   network: 'MAINNET',
-  onUnlData,
-  onValidationReceived,
-  // verbose: false
+  // onUnlData,
+  // onValidationReceived,
+  verbose: false
 })
+network.onUnlData = onUnlData
+network.onValidationReceived = onValidationReceived
+network.connect()
 
 const logger = new Logger({logsSubdirectory: 'MAINNET'})
 
