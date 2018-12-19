@@ -8,21 +8,6 @@ import * as dns from 'dns'
 // Load some pre-cached names
 const names = require('../validator-names.json')
 
-const delete_from_dedup_after_seconds = 30
-const dedup_validations_set = new Set()
-let dedup_last_signing_time = 0
-const dedup_clear = () => {
-  dedup_validations_set.forEach((value: string) => {
-    // `value` is more than 30 seconds old, based on signing_time
-    const validationMessage: ValidationMessage = JSON.parse(value)
-    if (validationMessage.signing_time + delete_from_dedup_after_seconds < dedup_last_signing_time) {
-      dedup_validations_set.delete(value)
-    }
-  })
-}
-// Remove old entries from the Set every 30 seconds
-setInterval(dedup_clear, delete_from_dedup_after_seconds * 1000)
-
 // The validations stream sends messages whenever it receives validation messages,
 // also called validation votes, from validators it trusts.
 export interface ValidationMessage {
@@ -201,13 +186,7 @@ class ValidationStream {
 
       if (dataObj.type === 'validationReceived') {
         const validationMessage: ValidationMessage = dataObj
-        if (!dedup_validations_set.has(JSON.stringify(validationMessage))) {
-          dedup_validations_set.add(JSON.stringify(validationMessage))
-          onValidationReceived(Object.assign({}, validationMessage, {timestamp: moment()}))
-        }
-        if (dedup_last_signing_time < validationMessage.signing_time) {
-          dedup_last_signing_time = validationMessage.signing_time
-        }
+        onValidationReceived(validationMessage)
       } else if (dataObj.type === 'manifestReceived') {
         const manifestMessage: ManifestMessage = dataObj
         onManifestReceived(manifestMessage)
@@ -314,6 +293,20 @@ export class Network {
 
   static readonly WS_PORT = '51233'
 
+  delete_from_dedup_after_seconds: number = 30
+  dedup_validations_set: Set<string> = new Set()
+  dedup_last_signing_time: number = 0
+
+  dedup_clear() {
+    this.dedup_validations_set.forEach((value: string) => {
+      // `value` is more than 30 seconds old, based on signing_time
+      const validationMessage: ValidationMessage = JSON.parse(value)
+      if (validationMessage.signing_time + this.delete_from_dedup_after_seconds < this.dedup_last_signing_time) {
+        this.dedup_validations_set.delete(value)
+      }
+    })
+  }
+
   validationStreams: {
     // key: The address of the validator ('ws://' + ip + ':' + WS_PORT).
     [key: string]: ValidationStream
@@ -377,6 +370,9 @@ export class Network {
     // every minute
     // setInterval(this.refreshSubscriptions.bind(this), 60 * 1000)
     this.refreshSubscriptions()
+
+    // Remove old entries from the Set every 30 seconds
+    setInterval(this.dedup_clear.bind(this), this.delete_from_dedup_after_seconds * 1000)
   }
 
   async subscribeToRippleds() {
@@ -442,7 +438,16 @@ export class Network {
           if (!this.validationStreams[address]) {
             this.validationStreams[address] = new ValidationStream({
               address,
-              onValidationReceived: this.onValidationReceived,
+              onValidationReceived: (validationMessage: ValidationMessage) => {
+                debugger;
+                if (!this.dedup_validations_set.has(JSON.stringify(validationMessage))) {
+                  this.dedup_validations_set.add(JSON.stringify(validationMessage))
+                  this.onValidationReceived(Object.assign({}, validationMessage, {timestamp: moment()}))
+                }
+                if (this.dedup_last_signing_time < validationMessage.signing_time) {
+                  this.dedup_last_signing_time = validationMessage.signing_time
+                }
+              },
               onManifestReceived,
               onClose: (cause: Error|{code: number, reason: string}) => { onCloseAddress(address, cause) }
             })
