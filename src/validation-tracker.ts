@@ -62,8 +62,11 @@ export interface ValidationMessage {
   // Typically this is a signing key (signing_key). Use manifests to map this to an actual validation_public_key.
   validation_public_key: string
 
-  // The time when the validation message was received.
-  timestamp: moment.Moment
+  // The time when the validation message was received; added by validation-tracker.
+  timestamp?: moment.Moment
+
+  // From manifestKeys; typically the public key of the master key pair; added by validation-tracker.
+  master_key?: string
 }
 
 // Associates a signing_key with a master_key (pubkey).
@@ -439,10 +442,12 @@ export class Network {
             this.validationStreams[address] = new ValidationStream({
               address,
               onValidationReceived: (validationMessage: ValidationMessage) => {
-                debugger;
                 if (!this.dedup_validations_set.has(JSON.stringify(validationMessage))) {
                   this.dedup_validations_set.add(JSON.stringify(validationMessage))
-                  this.onValidationReceived(Object.assign({}, validationMessage, {timestamp: moment()}))
+                  this.onValidationReceived(Object.assign({}, validationMessage, {
+                    master_key: this.manifestKeys[validationMessage.validation_public_key],
+                    timestamp: moment()
+                  }))
                 }
                 if (this.dedup_last_signing_time < validationMessage.signing_time) {
                   this.dedup_last_signing_time = validationMessage.signing_time
