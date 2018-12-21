@@ -346,17 +346,20 @@ export class Network {
   onUnlData: OnUnlDataCallback
   onValidationReceived: (validationMessage: ValidationMessage) => void
   verbose: boolean
+  require_master_key: boolean // if `true`, exclude validators that do not use manifests
 
   constructor(options: {
     network: NetworkType
+    require_master_key?: boolean
     // onUnlData: OnUnlDataCallback
     // onValidationReceived: (validationMessage: ValidationMessage) => void,
     verbose?: boolean
   }) {
     this.network = options.network
+    this.require_master_key = options.require_master_key === undefined ? false : options.require_master_key // default false
     this.onUnlData = () => {}
     this.onValidationReceived = () => {}
-    this.verbose = options.verbose === undefined ? true : options.verbose
+    this.verbose = options.verbose === undefined ? true : options.verbose // default true
     this.names = names
   }
 
@@ -442,6 +445,10 @@ export class Network {
             this.validationStreams[address] = new ValidationStream({
               address,
               onValidationReceived: (validationMessage: ValidationMessage) => {
+                if (this.require_master_key &&
+                    !this.manifestKeys[validationMessage.validation_public_key]) {
+                  return
+                }
                 if (!this.dedup_validations_set.has(JSON.stringify(validationMessage))) {
                   this.dedup_validations_set.add(JSON.stringify(validationMessage))
                   this.onValidationReceived(Object.assign({}, validationMessage, {
